@@ -1,0 +1,208 @@
+Holes and Ladders update #2 (game finished without snakes and ladders implemented).
+
+#include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Font.hpp>
+#include <SFML/Window/Event.hpp>
+#include <SFML/Window/Mouse.hpp>
+#include <SFML/Graphics/Rect.hpp>
+
+#include <array>
+#include <random>
+#include <iostream>
+#include <optional>
+
+int main() {
+    const int windowWidth = 800;
+    const int windowHeight = 800;
+    int rows = 10;
+    const int cols = 10;
+    int roll1;
+    int currentTile = 0; // Track the current tile the sprite is on
+    const int totalTiles = rows * cols; // 100 tiles in total
+
+    // Calculate the size of each cell
+    const float cellWidth = static_cast<float>(windowWidth) / cols;
+    const float cellHeight = static_cast<float>(windowHeight) / rows;
+
+    // Font
+    const sf::Font font("font.otf");
+
+    // create the window
+    sf::RenderWindow window(sf::VideoMode({1200, 800}), "My window");
+
+    std::array<sf::Texture, 6> diceTextures;
+    for (int i = 0; i < 6; ++i)
+    {
+        if (!diceTextures[i].loadFromFile("dice" + std::to_string(i + 1) + ".png"))
+        {
+            std::cerr << "Failed to load dice" << (i + 1) << ".png\n";
+            return 1;
+        }
+    }
+
+    // Set up pawn sprite
+    sf::Texture texture;
+    if (!texture.loadFromFile("sprite.png"))
+    {
+        std::cerr << "Error loading texture" << std::endl; // Ensure you have the correct file path for your image
+        return -1;
+    }
+
+    sf::Sprite sprite(texture);
+    sprite.setTextureRect({{0, 0}, {80, 80}});
+    sprite.setPosition({0.f, 710.f});
+
+
+    // Set up dice sprites
+    sf::Sprite die1(diceTextures[0]);
+    die1.setPosition({850.f, 250.f});
+    die1.setScale({0.25f, 0.25f});
+
+    // Set up button
+    sf::RectangleShape button(sf::Vector2f(120.f, 50.f));
+    button.setFillColor(sf::Color(200, 200, 200));
+    button.setOutlineColor(sf::Color::Black);
+    button.setOutlineThickness(2.f);
+    button.setPosition({850.f, 445.f});
+
+    sf::IntRect buttonR({880,200},{20,5});
+    sf::Text buttonText(font, "Roll Dice");
+    buttonText.setCharacterSize(20);
+    buttonText.setFillColor(sf::Color::Black);
+    buttonText.setPosition({860.f, 455.f});
+
+    // Random number generator
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 5); // 0 to 5 → dice1.png to dice6.png
+
+    bool hasWon = false;  // Track if the player has won
+
+
+    // run the program as long as the window is open
+    while (window.isOpen())
+    {
+        // check all the window's events that were triggered since the last iteration of the loop
+        while (auto event = window.pollEvent())
+        {
+            // "close requested" event: we close the window
+            if (event->is<sf::Event::Closed>())
+                window.close();
+
+            // Left mouse click
+            if (event->is<sf::Event::MouseButtonPressed>())
+            {
+                auto mouseEvent = event->getIf<sf::Event::MouseButtonPressed>();
+                if (event->is<sf::Event::MouseButtonPressed>())
+                    {
+                    const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>();
+                    if (mouse)
+                        {
+                        sf::Vector2f mousePos(static_cast<float>(mouse->position.x), static_cast<float>(mouse->position.y));
+                        if (button.getGlobalBounds().contains(mousePos))
+                        {
+                            // Click occurred within the area
+                            roll1 = dist(gen);
+                            die1.setTexture(diceTextures[roll1]);
+                            std::cout << "Rolled: " << (roll1 + 1) << std::endl;
+
+                            int stepsRemaining = roll1 + 1;
+                            float moveStep = 80.f;
+                            float spriteX = sprite.getPosition().x;
+                            float spriteY = sprite.getPosition().y;
+
+                            if (currentTile + stepsRemaining > totalTiles)
+                            {
+                                std::cout << "Need exact roll to win! You're at tile " << currentTile << "\n";
+                                continue;
+                            }
+
+
+                            while (stepsRemaining > 0)
+                            {
+                                currentTile++;
+                                stepsRemaining--;
+
+                                int row = (currentTile - 1) / cols;
+                                int col = (currentTile - 1) % cols;
+
+                                // Flip direction every other row (like zigzag)
+                                if (row % 2 == 1)
+                                {
+                                    col = cols - 1 - col;
+                                }
+
+                                float spriteX = col * cellWidth;
+                                float spriteY = windowHeight - cellHeight * (row + 1);
+
+                                sprite.setPosition({spriteX, spriteY});
+                            }
+
+                            // Check if the player has won
+                            if (currentTile == totalTiles)
+                            {
+                                hasWon = true;
+                                std::cout << "You Win!" << std::endl;
+                            }
+
+                            std::cout << "Sprite Position: (" << spriteX << ", " << spriteY << ")\n";
+                        }
+                    }
+                }
+            }
+
+
+
+            // clear the window with black color
+            window.clear(sf::Color(139,90,43));
+
+            // draw everything here...
+
+            // Draw vertical lines
+            for (int i = 0; i <= cols; ++i)
+            {
+                std::array line=
+                {
+                    sf::Vertex{sf::Vector2f(i * cellWidth, 0), sf::Color::Black},
+                    sf::Vertex{sf::Vector2f(i * cellWidth, windowHeight), sf::Color::Black}
+                };
+                window.draw(line.data(), line.size(), sf::PrimitiveType::Lines);
+            }
+
+            // Draw horizontal lines
+            for (int i = 0; i <= rows; ++i)
+            {
+
+                std::array line=
+                {
+                    sf::Vertex{sf::Vector2f(0, i * cellHeight), sf::Color::Black},
+                    sf::Vertex{sf::Vector2f(windowWidth, i * cellHeight), sf::Color::Black}
+                };
+                window.draw(line.data(), line.size(), sf::PrimitiveType::Lines);
+            }
+
+            // Draw dice
+            window.draw(die1);
+
+            // Draw button
+            window.draw(button);
+            window.draw(buttonText);
+
+            //Draw sprite
+            window.draw(sprite);
+
+            /*line
+            std::array line =
+            {
+                sf::Vertex{sf::Vector2f(0.f, 0.f)},
+                sf::Vertex{sf::Vector2f(100.f, 0.f)}
+            };
+            window.draw(line.data(), line.size(), sf::PrimitiveType::Lines);
+            */
+
+            // end the current frame
+            window.display();
+        }
+    }
+}
